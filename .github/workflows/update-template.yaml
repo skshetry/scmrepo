@@ -47,7 +47,7 @@ jobs:
       run: |
         for reject in $(git ls-files --others --exclude-standard '*.rej'); do
           cat ${reject}
-          patch -p1 --merge --no-backup-if-mismatch ${reject%.rej} < ${reject}
+          patch -p1 --merge --no-backup-if-mismatch ${reject%.rej} < ${reject} || true
           rm ${reject}
           echo
         done
