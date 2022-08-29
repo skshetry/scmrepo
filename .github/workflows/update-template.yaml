@@ -33,7 +33,6 @@ jobs:
 
     - name: Update template via cruft
       shell: bash
-      id: update
       run: cruft update -y
     
     - name: Check current state
@@ -65,7 +64,7 @@ jobs:
         echo "::set-output name=changes::$(git diff)"
 
     - name: Create PR
-      if: ${{ steps.update.outputs.changes != '' }}
+      if: ${{ steps.diff.outputs.changes != '' }}
       uses: peter-evans/create-pull-request@v4
       with:
         commit-message: update template
