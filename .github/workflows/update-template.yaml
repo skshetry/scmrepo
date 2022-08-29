@@ -14,14 +14,55 @@ jobs:
 
     - name: Set up Python
       uses: actions/setup-python@v4
+      shell: bash
       with:
         python-version: '3.10'
 
+    - name: Install cruft
+      shell: bash
+      run: pip install cruft
+
+    - name: Check old commit
+      shell: bash
+      id: old_commit
+      run: echo "::set-output name=hash::$(cat .cruft.json | jq '.commit' -r)"
+    
+    - name: Get template information
+      shell: bash
+      id: template
+      run: echo "::set-output name=url::$(cat .cruft.json | jq '.template' -r)"
+
     - name: Update template via cruft
+      shell: bash
       id: update
+      run: cruft update -y
+    
+    - name: Check current state
+      shell: bash
       run: |
-        pip install cruft
-        cruft update -y
+        git status --untracked-files=all
+        git diff
+
+    - name: Try to apply reject hunks 
+      shell: bash
+      run: |
+        for reject in $(git ls-files --others --exclude-standard '*.rej'); do
+          cat ${reject}
+          patch -p1 --merge --no-backup-if-mismatch ${reject%.rej} < ${reject}
+          rm ${reject}
+          echo
+        done
+
+    - name: Check new commit
+      shell: bash
+      id: new_commit
+      run: echo "::set-output name=hash::$(cat .cruft.json | jq '.commit' -r)"
+
+    - name: Check diff
+      id: diff
+      shell: bash
+      run: |
+        git status --untracked-files=all
         echo "::set-output name=changes::$(git diff)"
 
     - name: Create PR
@@ -30,3 +71,7 @@ jobs:
       with:
         commit-message: update template
         title: update template
+        body: |
+          Automated changes by [create-pull-request](https://github.com/peter-evans/create-pull-request) GitHub action.
+          This PR updates $REPO from `${{ steps.old_commit.outputs.hash }}` to `${{ steps.new_commit.outputs.hash }}`.
+          __See Changelog__: https://github.com/${{ steps.template.outputs.url }}/compare/${{ steps.old_commit.outputs.hash }}...${{ steps.new_commit.outputs.hash }}.
